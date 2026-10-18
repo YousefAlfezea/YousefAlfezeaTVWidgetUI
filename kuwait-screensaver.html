@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شاشة الكويت</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070b1f;--card:#101a45;--line:#2b3f8f;--text:#e9eeff;--dim:#8fa3e8;--accent:#6fc3ff;--hi:#ffd27a;--lo:#8fa3e8}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Readex Pro","Segoe UI",Tahoma,sans-serif;overflow:hidden;cursor:none}
+#app{height:100%;padding:3.5vw 4vw;display:grid;grid-template-rows:auto auto 1fr;gap:2vw}
+
+.card{background:linear-gradient(160deg,#142058,#0c1438);border:1px solid var(--line);border-radius:1.6vw}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:3vw}
+.next{padding:1.6vw 2vw;min-width:30vw}
+.next small{color:var(--dim);font-size:1.15vw}
+.next .nm{display:flex;gap:1.5vw;align-items:baseline;font-size:2.8vw;font-weight:600;margin:.6vw 0}
+.next .nm span{font-size:1.8vw;font-weight:300;color:var(--dim)}
+.next .left{color:var(--accent);font-size:1.9vw;font-weight:600}
+.clock{text-align:left;direction:rtl}
+.time{font-size:9vw;font-weight:300;color:var(--accent);line-height:1;letter-spacing:-.02em}
+.time i{font-style:normal;font-size:2vw;margin-inline-start:.8vw;color:var(--dim)}
+.meta{font-size:1.7vw;margin-top:1.4vw;color:var(--text);display:flex;flex-direction:column;gap:.7vw;align-items:flex-start}
+.meta .sub{color:var(--dim);font-size:1.5vw}
+.prayers{display:grid;grid-template-columns:repeat(5,1fr);gap:1vw;padding:1vw}
+.p{text-align:center;padding:1.2vw 0;border-radius:1.2vw;border:1px solid transparent}
+.p b{display:block;font-weight:400;font-size:1.5vw;color:var(--dim)}
+.p span{font-size:2.6vw;font-weight:600}
+.p.on{background:#26336e;border-color:#6f82d6}
+.p.on b{color:var(--text)}
+.wx{padding:1.2vw 1.4vw;display:grid;grid-template-columns:9vw repeat(10,1fr);align-content:space-evenly;text-align:center}
+.wx .d{font-size:1.25vw;color:var(--dim);padding-bottom:.6vw}
+.wx .city{font-size:1.8vw;font-weight:600;text-align:right;align-self:center}
+.wx .c{font-size:1.8vw;padding:.7vw 0;display:flex;flex-direction:column;align-items:center;gap:.2vw}
+.wx .c em{font-style:normal;font-size:3.2vw;line-height:1.1}
+.wx .c .r{font-size:1.2vw;color:var(--dim);opacity:.55;margin-top:.3vw}
+.wx .c .r.on{color:#7fd0ff;opacity:1}
+.wx .c .h{color:var(--hi);font-weight:600}
+.wx .c .l{color:var(--lo);font-size:1.25vw}
+.gcard{flex:1;min-width:0;align-self:stretch;padding:1.2vw 1.6vw;display:flex;flex-direction:column;gap:.5vw}
+.gh{display:flex;justify-content:space-between;color:var(--dim);font-size:1.15vw}
+.gtop{display:flex;align-items:baseline;gap:1vw}
+.gp{font-size:2.6vw;font-weight:600;color:var(--hi)}
+.gc{font-size:1.3vw;font-weight:600}
+.gc.up{color:#5be0a0}.gc.dn{color:#ff7a8a}
+#gsvg{width:100%;flex:1;min-height:5vw;display:block}
+.gr{display:flex;justify-content:space-between;color:var(--dim);font-size:1.05vw}
+.wx .d small{display:block;font-size:1vw;opacity:.75;margin-top:.15vw}
+.err{color:#ff9aa2;font-size:1.2vw}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="card next" id="next"><small>الصلاة القادمة</small><div class="nm">--</div><div class="left">--</div><small id="since"></small></div>
+    <div class="card gcard">
+      <div class="gh"><span id="gl">ذهب عيار ٢٤</span><small id="gs6">آخر ٦ ساعات</small></div>
+      <div class="gtop"><div class="gp" id="gp">--</div><div class="gc" id="gc"></div></div>
+      <svg id="gsvg" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
+      <div class="gr"><span id="glo"></span><span id="ghi"></span></div>
+    </div>
+    <div class="clock">
+      <div class="time" id="time">--:--</div>
+      <div class="meta"><div id="date">--</div><div class="sub" id="sub"></div></div>
+    </div>
+  </div>
+  <div class="card prayers" id="prayers"></div>
+  <div class="card wx" id="wx"></div>
+</div>
+<script>
+/* ===== Settings: edit these ===== */
+const CITIES=[{name:"الكويت",lat:29.3759,lon:47.9774}];
+const PRAYER_METHOD=9; // 9 = Kuwait (Ministry of Awqaf)
+// Gold: uses Dar Al Sabaek's feed. If it can't be read, falls back to world spot price x USD/KWD x GOLD_PREMIUM.
+const GOLD_URL="https://api.daralsabaek.com/api/goldAndFundBalance/getMetalPrices";
+const GOLD_PICK=r=>r.result.find(x=>x.metalType===1).buyPrice24; // metalType 1 = gold
+const GOLD_PREMIUM=1.0;               // e.g. 1.03 to add a 3% shop margin to spot
+/* ================================ */
+const TZ="Asia/Kuwait";
+const A=s=>String(s).replace(/\d/g,d=>"٠١٢٣٤٥٦٧٨٩"[d]);
+const NAMES=[["Fajr","الفجر"],["Dhuhr","الظهر"],["Asr","العصر"],["Maghrib","المغرب"],["Isha","العشاء"]];
+const $=id=>document.getElementById(id);
+const parts=(d,opt)=>Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:TZ,...opt}).formatToParts(d).map(p=>[p.type,p.value]));
+const ymd=d=>{const p=parts(d,{year:"numeric",month:"2-digit",day:"2-digit"});return{y:p.year,m:p.month,d:p.day}};
+const fmt12=(h,m)=>A(`${h%12||12}:${String(m).padStart(2,"0")}`)+" "+(h<12?"ص":"م");
+let pt={}; // prayer cache by date key
+async function prayersFor(date){
+  const {y,m,d}=ymd(date),key=`${y}-${m}-${d}`;
+  if(pt[key])return pt[key];
+  const r=await fetch(`https://api.aladhan.com/v1/timings/${d}-${m}-${y}?latitude=${CITIES[0].lat}&longitude=${CITIES[0].lon}&method=${PRAYER_METHOD}`);
+  const t=(await r.json()).data.timings;
+  pt[key]=NAMES.map(([k,ar])=>{const[h,mi]=t[k].split(":").map(Number);return{ar,h,mi,at:new Date(`${key}T${String(h).padStart(2,"0")}:${String(mi).padStart(2,"0")}:00+03:00`)}});
+  return pt[key];
+}
+let today=[],tomorrow=[];
+async function loadPrayers(){
+  try{
+    const now=new Date();
+    today=await prayersFor(now);tomorrow=await prayersFor(new Date(now.getTime()+864e5));
+    $("prayers").innerHTML=today.map((p,i)=>`<div class="p" data-i="${i}"><b>${p.ar}</b><span>${fmt12(p.h,p.mi)}</span></div>`).join("");
+  }catch(e){console.error(e)}
+}
+function hijri(now){
+  const f=new Intl.DateTimeFormat("ar-u-ca-islamic-umalqura-nu-arab",{timeZone:TZ,day:"numeric",month:"long",year:"numeric"});
+  const wd=new Intl.DateTimeFormat("ar",{timeZone:TZ,weekday:"long",day:"numeric",month:"long",numberingSystem:"arab"}).format(now);
+  return wd+" · "+f.format(now).replace(/ هـ$/,"")+" هـ";
+}
+function daysToRamadan(now){
+  const f=new Intl.DateTimeFormat("en-u-ca-islamic-umalqura",{timeZone:TZ,day:"numeric",month:"numeric"});
+  for(let i=1;i<=400;i++){
+    const p=Object.fromEntries(f.formatToParts(new Date(now.getTime()+i*864e5)).map(x=>[x.type,x.value]));
+    if(p.month==="9"&&p.day==="1")return i;
+  }
+  return null;
+}
+const HOURS=6;
+let hist=[],src="";
+const fmtK=v=>A(v.toFixed(3)).replace(".","٫");
+function loadHist(){try{hist=JSON.parse(localStorage.getItem("gh_"+src)||"[]")}catch(e){hist=[]}}
+function addPoint(v){
+  const t=Date.now();hist=hist.filter(p=>t-p[0]<=HOURS*36e5);hist.push([t,v]);
+  try{localStorage.setItem("gh_"+src,JSON.stringify(hist))}catch(e){}
+}
+function drawGold(){
+  const svg=$("gsvg");
+  if(hist.length<2){svg.innerHTML=`<text x="150" y="48" fill="#8fa3e8" font-size="11" text-anchor="middle">جارٍ جمع بيانات الرسم…</text>`;return}
+  const t0=hist[0][0],t1=hist[hist.length-1][0],vs=hist.map(p=>p[1]);
+  let lo=Math.min(...vs),hi=Math.max(...vs);if(hi-lo<.001){hi+=.0005;lo-=.0005}
+  const X=t=>(t-t0)/(t1-t0||1)*300,Y=v=>6+(1-(v-lo)/(hi-lo))*78;
+  const pts=hist.map(p=>X(p[0]).toFixed(1)+","+Y(p[1]).toFixed(1)).join(" ");
+  const up=vs[vs.length-1]>=vs[0],col=up?"#5be0a0":"#ff7a8a";
+  svg.innerHTML=`<polygon points="0,90 ${pts} 300,90" fill="${col}" opacity=".15"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
+  const pct=(vs[vs.length-1]-vs[0])/vs[0]*100,gc=$("gc");
+  gc.textContent=`${up?"▲":"▼"} ${A(Math.abs(pct).toFixed(2))}٪`;gc.className="gc "+(up?"up":"dn");
+  $("glo").textContent="الأدنى "+fmtK(lo);$("ghi").textContent="الأعلى "+fmtK(hi);
+  const mins=Math.round((t1-t0)/6e4);
+  $("gs6").textContent=mins>=HOURS*60-5?"آخر ٦ ساعات":mins<60?`آخر ${A(mins)} دقيقة`:`آخر ${A(Math.floor(mins/60))} ساعة و${A(mins%60)} دقيقة`;
+}
+async function loadGold(){
+  let kwd,tag="",s2="ds";
+  try{
+    if(!GOLD_URL)throw 0;
+    kwd=GOLD_PICK(await(await fetch(GOLD_URL)).json());tag=" · دار السبائك";
+  }catch(e){
+    try{ // fallback: world spot price converted to KWD
+      const [g,fx]=await Promise.all([fetch("https://api.gold-api.com/price/XAU").then(r=>r.json()),fetch("https://open.er-api.com/v6/latest/USD").then(r=>r.json())]);
+      kwd=g.price/31.1035*fx.rates.KWD*GOLD_PREMIUM;tag=" · عالمي";s2="spot";
+    }catch(e2){return}
+  }
+  if(s2!==src){src=s2;loadHist()}
+  addPoint(kwd);
+  $("gl").textContent="ذهب عيار ٢٤ للجرام"+tag;
+  $("gp").textContent=fmtK(kwd)+" د.ك";
+  drawGold();
+}
+function tick(){
+  const now=new Date(),p=parts(now,{hour:"numeric",minute:"2-digit",hour12:false});
+  const h=+p.hour%24,m=+p.minute;
+  $("time").innerHTML=A(`${h%12||12}:${String(m).padStart(2,"0")}`)+`<i>${h<12?"ص":"م"}</i>`;
+  $("date").textContent=hijri(now);
+  const dr=daysToRamadan(now);
+  $("sub").textContent=dr?`باقي على رمضان ${A(dr)} يومًا`:"";
+  if(!today.length)return;
+  const all=[...today,...tomorrow];
+  let ni=all.findIndex(x=>x.at>now); if(ni<0)ni=0;
+  const n=all[ni],diff=Math.max(0,n.at-now),H=Math.floor(diff/36e5),M=Math.floor(diff%36e5/6e4);
+  $("next").querySelector(".nm").innerHTML=`${n.ar} <span>${fmt12(n.h,n.mi)}</span>`;
+  $("next").querySelector(".left").textContent="باقي "+(H?`${A(H)} ساعات و`:"")+`${A(M)} دقيقة`;
+  const prev=all[ni-1];
+  $("since").textContent=prev?`مضى على ${prev.ar} ${A(Math.floor((now-prev.at)/6e4))} دقيقة`:"";
+  document.querySelectorAll(".p").forEach(el=>el.classList.toggle("on",ni<5&&+el.dataset.i===ni));
+}
+const ICON=c=>c===0?"☀️":c<=2?"🌤️":c===3?"☁️":c<=48?"🌫️":c<=67?"🌧️":c<=77?"🌨️":c<=82?"🌦️":"⛈️";
+async function loadWeather(){
+  try{
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${CITIES.map(c=>c.lat)}&longitude=${CITIES.map(c=>c.lon)}&daily=weather_code,precipitation_probability_max,temperature_2m_max,temperature_2m_min&forecast_days=10&timezone=${TZ}`;
+    let r=await(await fetch(u)).json(); if(!Array.isArray(r))r=[r];
+    const days=r[0].daily.time.map((t,i)=>{const dt=new Date(t+"T12:00:00+03:00");
+      const wd=i===0?"اليوم":new Intl.DateTimeFormat("ar",{weekday:"long",timeZone:TZ}).format(dt);
+      const dd=new Intl.DateTimeFormat("ar",{day:"numeric",month:"short",timeZone:TZ,numberingSystem:"arab"}).format(dt);
+      return `${wd}<small>${dd}</small>`});
+    let html=`<div></div>`+days.map(d=>`<div class="d">${d}</div>`).join("");
+    r.forEach((w,ci)=>{
+      html+=`<div class="city">${CITIES[ci].name}</div>`+w.daily.time.map((_,i)=>
+        `<div class="c"><em>${ICON(w.daily.weather_code[i])}</em><span class="h">${A(Math.round(w.daily.temperature_2m_max[i]))}°</span><span class="l">${A(Math.round(w.daily.temperature_2m_min[i]))}°</span><span class="r${(w.daily.precipitation_probability_max[i]||0)>0?" on":""}">💧 ${A(w.daily.precipitation_probability_max[i]||0)}٪</span></div>`).join("");
+    });
+    $("wx").innerHTML=html;
+  }catch(e){$("wx").innerHTML=`<div class="err">تعذر تحميل الطقس</div>`}
+}
+(async()=>{
+  await Promise.all([loadPrayers(),loadWeather(),loadGold()]);
+  tick();setInterval(tick,1000);
+  setInterval(loadWeather,30*60e3);setInterval(loadGold,15e3);
+  setInterval(loadPrayers,60*60e3);
+})();
+document.addEventListener("click",()=>document.documentElement.requestFullscreen?.());
+</script>
+</body>
+</html>
