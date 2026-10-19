@@ -56,7 +56,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Readex
   <div class="top">
     <div class="card next" id="next"><small>الصلاة القادمة</small><div class="nm">--</div><div class="left">--</div><small id="since"></small></div>
     <div class="card gcard">
-      <div class="gh"><span id="gl">ذهب عيار ٢٤</span><small id="gs6">آخر ٦ ساعات</small></div>
+      <div class="gh"><span id="gl">ذهب عيار ٢٤</span><small id="gs6">آخر ٦ ساعات</small><small id="gcd"></small></div>
       <div class="gtop"><div class="gp" id="gp">--</div><div class="gc" id="gc"></div></div>
       <svg id="gsvg" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
       <div class="gr"><span id="glo"></span><span id="ghi"></span></div>
@@ -138,7 +138,9 @@ function drawGold(){
   const mins=Math.round((t1-t0)/6e4);
   $("gs6").textContent=mins>=HOURS*60-5?"آخر ٦ ساعات":mins<60?`آخر ${A(mins)} دقيقة`:`آخر ${A(Math.floor(mins/60))} ساعة و${A(mins%60)} دقيقة`;
 }
+let nextGold=Date.now()+15e3;
 async function loadGold(){
+  nextGold=Date.now()+15e3;
   let kwd,tag="",s2="ds";
   try{
     if(!GOLD_URL)throw 0;
@@ -156,6 +158,7 @@ async function loadGold(){
   drawGold();
 }
 function tick(){
+  $("gcd").textContent="تحديث بعد "+A(Math.max(0,Math.ceil((nextGold-Date.now())/1000)))+" ث";
   const now=new Date(),p=parts(now,{hour:"numeric",minute:"2-digit",hour12:false});
   const h=+p.hour%24,m=+p.minute;
   $("time").innerHTML=A(`${h%12||12}:${String(m).padStart(2,"0")}`)+`<i>${h<12?"ص":"م"}</i>`;
